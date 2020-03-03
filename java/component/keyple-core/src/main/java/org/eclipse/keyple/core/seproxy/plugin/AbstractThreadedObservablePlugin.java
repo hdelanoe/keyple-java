@@ -138,6 +138,7 @@ public abstract class AbstractThreadedObservablePlugin extends AbstractPlugin {
      * physical readers managed by third-party library such as smardcard.io and the list of keyple
      * {@link org.eclipse.keyple.core.seproxy.SeReader} Insertion, removal, and access operations
      * safely execute concurrently by multiple threads.
+     * Mutable list
      */
     private final SortedSet<String> nativeReadersNames = new ConcurrentSkipListSet<String>();
 
@@ -166,10 +167,11 @@ public abstract class AbstractThreadedObservablePlugin extends AbstractPlugin {
 
         @Override
         public void run() {
+            //mutable list
             SortedSet<String> changedReaderNames = new ConcurrentSkipListSet<String>();
             try {
                 while (running) {
-                    /* retrieves the current readers names list */
+                    /* retrieves the current readers names list, immutable list */
                     SortedSet<String> actualNativeReadersNames =
                             AbstractThreadedObservablePlugin.this.fetchNativeReadersNames();
                     /*

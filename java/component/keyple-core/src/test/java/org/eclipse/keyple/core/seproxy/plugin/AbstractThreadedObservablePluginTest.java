@@ -58,7 +58,6 @@ public class AbstractThreadedObservablePluginTest extends CoreBaseTest {
         // test if thread is activated
         Assert.assertTrue(plugin.isMonitoring());
 
-
         // shutdown thread
         plugin.finalize();
     }
@@ -101,9 +100,21 @@ public class AbstractThreadedObservablePluginTest extends CoreBaseTest {
 
     }
 
+    @Test
+    public void concurrentList() throws Throwable {
+        ConcurrentMockObservablePlugin plugin = new ConcurrentMockObservablePlugin("testConcurrentList");
+        plugin.addObserver(getOneObserver());
+
+        Thread.sleep(5000);
+
+    }
 
 
-    /*
+
+
+
+
+        /*
      * Helpers
      */
     ObservablePlugin.PluginObserver getOneObserver() {
