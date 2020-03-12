@@ -87,6 +87,7 @@ public final class GetDataFciRespPars extends AbstractPoResponseParser {
     private boolean isValidCalypsoFCI = false;
     private byte[] dfName = null;
     private byte[] applicationSN = null;
+    private byte[] startupInfo = null;
     private byte siBufferSizeIndicator = 0;
     private byte siPlatform = 0;
     private byte siApplicationType = 0;
@@ -196,22 +197,29 @@ public final class GetDataFciRespPars extends AbstractPoResponseParser {
                 return;
             }
 
-            byte[] discretionaryData = tlv.getValue();
+            byte[] startupInfo = tlv.getValue();
 
             if (logger.isDebugEnabled()) {
-                logger.debug("Discretionary Data = {}", ByteArrayUtil.toHex(discretionaryData));
+                logger.debug("Discretionary Data = {}", ByteArrayUtil.toHex(startupInfo));
+            }
+
+            if (startupInfo.length != 7) {
+                logger.error("FCI parsing error: bad startup info length:{} (7 is expected).");
+                return;
             }
 
             /*
-             * split discretionary data in as many individual startup information
+             * split discretionary data in as many individual startup information TODO check if it
+             * wouldn't be better to do this in CalypsoPo from startupinfo and consequently reduce
+             * the number of getters and operations done here
              */
-            siBufferSizeIndicator = discretionaryData[0];
-            siPlatform = discretionaryData[1];
-            siApplicationType = discretionaryData[2];
-            siApplicationSubtype = discretionaryData[3];
-            siSoftwareIssuer = discretionaryData[4];
-            siSoftwareVersion = discretionaryData[5];
-            siSoftwareRevision = discretionaryData[6];
+            siBufferSizeIndicator = startupInfo[0];
+            siPlatform = startupInfo[1];
+            siApplicationType = startupInfo[2];
+            siApplicationSubtype = startupInfo[3];
+            siSoftwareIssuer = startupInfo[4];
+            siSoftwareVersion = startupInfo[5];
+            siSoftwareRevision = startupInfo[6];
             /* all 3 main fields were retrieved */
             isValidCalypsoFCI = true;
 
@@ -231,6 +239,10 @@ public final class GetDataFciRespPars extends AbstractPoResponseParser {
 
     public byte[] getApplicationSerialNumber() {
         return applicationSN;
+    }
+
+    public byte[] getStartupInfo() {
+        return startupInfo;
     }
 
     public byte getBufferSizeIndicator() {

@@ -112,6 +112,9 @@ public class GetDataRespParsTest {
         Assert.assertFalse(parser.isRatificationCommandRequired());
         Assert.assertFalse(parser.hasCalypsoPin());
         Assert.assertTrue(parser.hasCalypsoStoredValue());
+        /* startup info */
+        Assert.assertArrayEquals(ByteArrayUtil.fromHex(startupInformation),
+                parser.getStartupInfo());
         /* ApplicationSubType */
         Assert.assertEquals(siApplicationSubtype, parser.getApplicationSubtypeByte());
         /* SoftwareIssuer */
