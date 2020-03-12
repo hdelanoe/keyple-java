@@ -43,16 +43,17 @@ import org.slf4j.LoggerFactory;
  */
 public final class CalypsoPo extends AbstractMatchingSe {
     private static final Logger logger = LoggerFactory.getLogger(CalypsoPo.class);
+    public final byte[] startupInfo;
     private final byte bufferSizeIndicator;
-    private final int bufferSizeValue;
     private final byte platform;
     private final byte applicationType;
-    private final boolean isRev3_2ModeAvailable;
-    private final boolean isRatificationCommandRequired;
+    private final boolean isConfidentialSessionSupported;
+    private final boolean isPublicAuthenticationSupported;
+    private final boolean isDeselectRatificationSupported;
     private final boolean hasCalypsoStoredValue;
     private final boolean hasCalypsoPin;
-    private final byte applicationSubtypeByte;
-    private final byte softwareIssuerByte;
+    private final byte applicationSubtype;
+    private final byte softwareIssuer;
     private final byte softwareVersion;
     private final byte softwareRevision;
     private final boolean isDfInvalidated;
@@ -62,8 +63,9 @@ public final class CalypsoPo extends AbstractMatchingSe {
     private static final int PO_REV1_ATR_LENGTH = 20;
     private static final int REV1_PO_DEFAULT_WRITE_OPERATIONS_NUMBER_SUPPORTED_PER_SESSION = 3;
     private static final int REV2_PO_DEFAULT_WRITE_OPERATIONS_NUMBER_SUPPORTED_PER_SESSION = 6;
+    private static final byte APP_TYPE_CALYPSO_REV_33_PKI = 0x10;
     private byte[] poAtr;
-    private int modificationsCounterMax;
+    private int modificationCounterMax;
     private boolean modificationCounterIsInBytes = true;
 
     /**
@@ -96,7 +98,7 @@ public final class CalypsoPo extends AbstractMatchingSe {
              * <li>otherwise&nbsp;&nbsp;&rarr;&nbsp;&nbsp;REV2.4</li> </ul>
              */
             byte applicationTypeByte = poFciRespPars.getApplicationTypeByte();
-            if ((applicationTypeByte & (1 << 7)) != 0) {
+            if (((applicationTypeByte & 0xFF) & (1 << 7)) != 0) {
                 /* CLAP */
                 this.revision = PoRevision.REV3_1_CLAP;
             } else if ((applicationTypeByte >> 3) == (byte) (0x05)) {
@@ -114,24 +116,29 @@ public final class CalypsoPo extends AbstractMatchingSe {
             if (this.revision == PoRevision.REV2_4) {
                 /* old cards have their modification counter in number of commands */
                 modificationCounterIsInBytes = false;
-                this.modificationsCounterMax =
+                this.modificationCounterMax =
                         REV2_PO_DEFAULT_WRITE_OPERATIONS_NUMBER_SUPPORTED_PER_SESSION;
             } else {
-                this.modificationsCounterMax = poFciRespPars.getBufferSizeValue();
+                this.modificationCounterMax = poFciRespPars.getBufferSizeValue();
             }
+            this.startupInfo = poFciRespPars.getStartupInfo();
             this.bufferSizeIndicator = poFciRespPars.getBufferSizeIndicator();
-            this.bufferSizeValue = poFciRespPars.getBufferSizeValue();
             this.platform = poFciRespPars.getPlatformByte();
             this.applicationType = poFciRespPars.getApplicationTypeByte();
-            this.isRev3_2ModeAvailable = poFciRespPars.isRev3_2ModeAvailable();
-            this.isRatificationCommandRequired = poFciRespPars.isRatificationCommandRequired();
+            // the only functional feature brought by version 3.2 is the confidential mode of the
+            // secure session, so we associate here this feature with the availability of the 3.2
+            // mode.
+            this.isConfidentialSessionSupported = poFciRespPars.isRev3_2ModeAvailable();
+            this.isDeselectRatificationSupported = !poFciRespPars.isRatificationCommandRequired();
             this.hasCalypsoStoredValue = poFciRespPars.hasCalypsoStoredValue();
             this.hasCalypsoPin = poFciRespPars.hasCalypsoPin();
-            this.applicationSubtypeByte = poFciRespPars.getApplicationSubtypeByte();
-            this.softwareIssuerByte = poFciRespPars.getSoftwareIssuerByte();
+            this.applicationSubtype = poFciRespPars.getApplicationSubtypeByte();
+            this.softwareIssuer = poFciRespPars.getSoftwareIssuerByte();
             this.softwareVersion = poFciRespPars.getSoftwareVersionByte();
             this.softwareRevision = poFciRespPars.getSoftwareRevisionByte();
             this.isDfInvalidated = poFciRespPars.isDfInvalidated();
+            this.isPublicAuthenticationSupported =
+                    (applicationType & APP_TYPE_CALYPSO_REV_33_PKI) != 0;
         } else {
             /*
              * FCI is not provided: we consider it is Calypso PO rev 1, it's serial number is
@@ -153,22 +160,31 @@ public final class CalypsoPo extends AbstractMatchingSe {
              * the array is initialized with 0 (cf. default value for primitive types)
              */
             System.arraycopy(poAtr, 12, this.applicationSerialNumber, 4, 4);
-            this.modificationsCounterMax =
+            this.modificationCounterMax =
                     REV1_PO_DEFAULT_WRITE_OPERATIONS_NUMBER_SUPPORTED_PER_SESSION;
 
             this.bufferSizeIndicator = 0;
-            this.bufferSizeValue = REV1_PO_DEFAULT_WRITE_OPERATIONS_NUMBER_SUPPORTED_PER_SESSION;
             this.platform = poAtr[6];
             this.applicationType = poAtr[7];
-            this.applicationSubtypeByte = poAtr[8];
-            this.isRev3_2ModeAvailable = false;
-            this.isRatificationCommandRequired = true;
+            this.applicationSubtype = poAtr[8];
+            this.isConfidentialSessionSupported = false;
+            this.isDeselectRatificationSupported = true;
+            this.isPublicAuthenticationSupported = false;
             this.hasCalypsoStoredValue = false;
             this.hasCalypsoPin = false;
-            this.softwareIssuerByte = poAtr[9];
+            this.softwareIssuer = poAtr[9];
             this.softwareVersion = poAtr[10];
             this.softwareRevision = poAtr[11];
-            this.isDfInvalidated = false;
+            this.isDfInvalidated = false; // TODO check the behaviour of invalidated old POs
+            // creation of the startupinfo from the elements extracted from the ATR
+            this.startupInfo = new byte[7];
+            this.startupInfo[0] = bufferSizeIndicator;
+            this.startupInfo[1] = platform;
+            this.startupInfo[2] = applicationType;
+            this.startupInfo[3] = applicationSubtype;
+            this.startupInfo[4] = softwareIssuer;
+            this.startupInfo[5] = softwareVersion;
+            this.startupInfo[6] = softwareRevision;
         }
         if (logger.isTraceEnabled()) {
             logger.trace("REVISION = {}, SERIALNUMBER = {}, DFNAME = {}", this.revision,
@@ -180,8 +196,8 @@ public final class CalypsoPo extends AbstractMatchingSe {
     /**
      * The PO revision indicates the generation of the product presented.
      * <p>
-     * It will also have an impact on the internal construction of some commands to take into
-     * account the specificities of the different POs.
+     * It will also have an impact on the internal construction of certain commands in order to take
+     * into account the specific characteristics of the various existing POs.
      * 
      * @return an enum giving the identified PO revision
      */
@@ -190,29 +206,50 @@ public final class CalypsoPo extends AbstractMatchingSe {
     }
 
     /**
-     * The DF name is the name of the application DF as defined in ISO/IEC 7816-4.
-     * <p>
-     * It also corresponds to the complete representation of the target covered by the AID value
-     * provided in the selection command.
-     * <p>
-     * The AID selects the application by specifying all or part of the targeted DF Name (5 bytes
-     * minimum).
+     * Returns the DF Name field extracted from the FCI structure as an array of bytes for internal
+     * API use.
      * 
-     * @return a byte array containing the DF Name bytes (5 to 16 bytes)
+     * @return a byte array representing the DF Name
+     * @see CalypsoPo#getDfName() for the public version of this method
      */
-    public byte[] getDfName() {
+    protected byte[] getDfNameBytes() {
         return dfName;
     }
 
     /**
-     * The serial number for the application, is unique ID for the PO.
+     * The DF Name is the name of the application DF as defined in ISO/IEC 7816-4.
      * <p>
-     * It is also used for key derivation.
-     * 
-     * @return a byte array containing the Application Serial Number (8 bytes)
+     * It also corresponds to the complete representation of the target covered by the AID value
+     * provided in the selection command.
+     * <p>
+     * The AID provided in the selection process selects the application by specifying all or part
+     * of the targeted DF Name (from 5 to 16 bytes).
+     *
+     * @return an hex string representing the DF Name bytes
      */
-    public byte[] getApplicationSerialNumber() {
+    public String getDfName() {
+        return ByteArrayUtil.toHex(getDfNameBytes());
+    }
+
+    /**
+     * Returns the Calypso Serial Number field extracted from the FCI structure as an array of bytes
+     * for internal API use.
+     * 
+     * @return the byte array representing the SerialNumber (8 bytes)
+     * @see CalypsoPo#getApplicationSerialNumberBytes() for the public version of this method
+     */
+    protected byte[] getApplicationSerialNumberBytes() {
         return applicationSerialNumber;
+    }
+
+    /**
+     * The Calypso serial number therefore allows a unique identification of the portable object or
+     * application. It is for example used to manage blacklists, key derivation, etc.
+     *
+     * @return an hex string representing the Calypso Serial Number (16 hex digits)
+     */
+    public String getApplicationSerialNumber() {
+        return ByteArrayUtil.toHex(getApplicationSerialNumberBytes());
     }
 
     /**
@@ -226,10 +263,32 @@ public final class CalypsoPo extends AbstractMatchingSe {
      * <p>
      * This field is not interpreted in the Calypso module.
      * 
-     * @return a byte array containing the ATR (variable length)
+     * @return an hex string representing the ATR bytes (variable length)
      */
-    public byte[] getAtr() {
-        return poAtr;
+    public String getAtr() {
+        return ByteArrayUtil.toHex(poAtr);
+    }
+
+    /**
+     * The Calypso applications return the Startup Information in the answer to the Select
+     * Application command.
+     * <p>
+     * The Startup Information contains the following data fields:
+     * <ul>
+     * <li>Session Modifications: indication of the maximum number of bytes that can be modified in
+     * one session (buffer size indicator)
+     * <li>Platform (chip type): type of platform According to Calypso Technical Note 001
+     * <li>Application type: Calypso revision
+     * <li>Application subtype: file structure reference
+     * <li>Software Issuer: software issuer reference
+     * <li>Software Version (Rom Version): Software version (MSB)
+     * <li>Software Revision (Eeprom Version): Software version (LSB)
+     * </ul>
+     * 
+     * @return an hex string representing the startupinfo bytes (14 hex digits)
+     */
+    public String getStartupInfo() {
+        return ByteArrayUtil.toHex(startupInfo);
     }
 
     /**
@@ -240,7 +299,7 @@ public final class CalypsoPo extends AbstractMatchingSe {
      * 
      * @return true if the counter is number of bytes
      */
-    public boolean isModificationsCounterInBytes() {
+    protected boolean isModificationCounterInBytes() {
         return modificationCounterIsInBytes;
     }
 
@@ -248,12 +307,12 @@ public final class CalypsoPo extends AbstractMatchingSe {
      * Indicates the maximum number of changes allowed in session.
      * <p>
      * This number can be a number of operations or a number of commands (see
-     * isModificationsCounterInBytes)
+     * isModificationCounterInBytes)
      * 
      * @return the maximum number of modifications allowed
      */
-    public int getModificationsCounter() {
-        return modificationsCounterMax;
+    protected int getModificationCounter() {
+        return modificationCounterMax;
     }
 
     /**
@@ -264,25 +323,11 @@ public final class CalypsoPo extends AbstractMatchingSe {
      * <p>
      * When the modification counter is in bytes, it is used to determine the maximum number of
      * modified bytes allowed. (see the formula in the PO specification)
-     * 
+     *
      * @return the buffer size indicator byte
      */
-    public byte getBufferSizeIndicator() {
+    protected byte getSessionModifications() {
         return bufferSizeIndicator;
-    }
-
-    /**
-     * The buffer size value is the raw interpretation of the buffer size indicator to provide a
-     * number of bytes.
-     * <p>
-     * The revision number must be taken into account at the same time to be accurate.
-     * <p>
-     * It is better to use getModificationsCounter and isModificationsCounterInBytes
-     * 
-     * @return the buffer size value evaluated from the buffer size indicator
-     */
-    public int getBufferSizeValue() {
-        return bufferSizeValue;
     }
 
     /**
@@ -290,39 +335,51 @@ public final class CalypsoPo extends AbstractMatchingSe {
      * 
      * @return the platform identification byte
      */
-    public byte getPlatformByte() {
+    public byte getPlatform() {
         return platform;
     }
 
     /**
      * The Application Type byte determines the Calypso Revision and various options
-     * 
+     *
      * @return the Application Type byte
      */
-    public byte getApplicationTypeByte() {
+    public byte getApplicationType() {
         return applicationType;
     }
 
     /**
-     * Indicates whether the 3.2 mode is supported or not.
+     * Indicates whether the Confidential access mode is supported or not (from Rev 3.2 and above).
      * <p>
      * This boolean is interpreted from the Application Type byte
      * 
-     * @return true if the revision 3.2 mode is supported
+     * @return true if the Confidential access mode is supported
      */
-    public boolean isRev3_2ModeAvailable() {
-        return isRev3_2ModeAvailable;
+    public boolean isConfidentialSessionSupported() {
+        return isConfidentialSessionSupported;
     }
 
     /**
-     * Indicates if the ratification is done on deselect (ratification command not necessary)
+     * Indicates whether ratification of the Calypso DF is made upon receipt of the contactless
+     * protocol deselect request.
      * <p>
      * This boolean is interpreted from the Application Type byte
      * 
-     * @return true if the ratification command is required
+     * @return true if the ratification on deselect is available
      */
-    public boolean isRatificationCommandRequired() {
-        return isRatificationCommandRequired;
+    public boolean isDeselectRatificationSupported() {
+        return isDeselectRatificationSupported;
+    }
+
+    /**
+     * Indicates whether the PKI mode is supported or not (from Rev 3.3 and above).
+     * <p>
+     * This boolean is interpreted from the Application Type byte
+     *
+     * @return true if the PKI mode is supported
+     */
+    public boolean isPublicAuthenticationSupported() {
+        return isPublicAuthenticationSupported;
     }
 
     /**
@@ -332,29 +389,18 @@ public final class CalypsoPo extends AbstractMatchingSe {
      * 
      * @return true if the PO has the Stored Value feature
      */
-    public boolean hasCalypsoStoredValue() {
+    public boolean isSvFeatureAvailable() {
         return hasCalypsoStoredValue;
-    }
-
-    /**
-     * Indicates whether the PO has the Calypso PIN feature.
-     * <p>
-     * This boolean is interpreted from the Application Type byte
-     * 
-     * @return true if the PO has the PIN feature
-     */
-    public boolean hasCalypsoPin() {
-        return hasCalypsoPin;
     }
 
     /**
      * The Application Subtype indicates to the terminal a reference to the file structure of the
      * Calypso DF.
-     * 
+     *
      * @return the Application Subtype byte
      */
-    public byte getApplicationSubtypeByte() {
-        return applicationSubtypeByte;
+    public byte getApplicationSubtype() {
+        return applicationSubtype;
     }
 
     /**
@@ -363,8 +409,8 @@ public final class CalypsoPo extends AbstractMatchingSe {
      * 
      * @return the Software Issuer byte
      */
-    public byte getSoftwareIssuerByte() {
-        return softwareIssuerByte;
+    public byte getSoftwareIssuer() {
+        return softwareIssuer;
     }
 
     /**
@@ -373,7 +419,7 @@ public final class CalypsoPo extends AbstractMatchingSe {
      * 
      * @return the Software Version byte
      */
-    public byte getSoftwareVersionByte() {
+    public byte getSoftwareVersion() {
         return softwareVersion;
     }
 
@@ -383,7 +429,7 @@ public final class CalypsoPo extends AbstractMatchingSe {
      * 
      * @return the Software Revision byte
      */
-    public byte getSoftwareRevisionByte() {
+    public byte getSoftwareRevision() {
         return softwareRevision;
     }
 
@@ -407,7 +453,7 @@ public final class CalypsoPo extends AbstractMatchingSe {
      * 
      * @return the PO class determined from the PO revision
      */
-    public PoClass getPoClass() {
+    protected PoClass getPoClass() {
         /* Rev1 and Rev2 expects the legacy class byte while Rev3 expects the ISO class byte */
         if (revision == PoRevision.REV1_0 || revision == PoRevision.REV2_4) {
             if (logger.isTraceEnabled()) {
@@ -420,5 +466,16 @@ public final class CalypsoPo extends AbstractMatchingSe {
             }
             return PoClass.ISO;
         }
+    }
+
+    /**
+     * Indicates whether the PO has the Calypso PIN feature.
+     * <p>
+     * This boolean is interpreted from the Application Type byte
+     *
+     * @return true if the PO has the PIN feature
+     */
+    public boolean isPinFeatureAvailable() {
+        return hasCalypsoPin;
     }
 }

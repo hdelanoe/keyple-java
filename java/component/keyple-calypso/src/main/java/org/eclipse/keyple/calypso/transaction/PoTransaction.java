@@ -118,9 +118,9 @@ public final class PoTransaction {
 
         this.calypsoPo = poResource.getMatchingSe();
 
-        modificationsCounterIsInBytes = calypsoPo.isModificationsCounterInBytes();
+        modificationsCounterIsInBytes = calypsoPo.isModificationCounterInBytes();
 
-        modificationsCounterMax = modificationsCounter = calypsoPo.getModificationsCounter();
+        modificationsCounterMax = modificationsCounter = calypsoPo.getModificationCounter();
 
         sessionState = SessionState.SESSION_UNINITIALIZED;
 

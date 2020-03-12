@@ -61,7 +61,7 @@ public class PoSelectionRequestTest {
         CalypsoPo calypsoPo = poSelectionRequest
                 .parse(new SeResponse(true, false, new SelectionStatus(atr, fciData, true), null));
         Assert.assertArrayEquals(ByteArrayUtil.fromHex(SERIAL_NUMBER),
-                calypsoPo.getApplicationSerialNumber());
+                calypsoPo.getApplicationSerialNumberBytes());
     }
 
     @Test

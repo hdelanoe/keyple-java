@@ -124,36 +124,46 @@ public class CalypsoPoTest {
 
     @Test
     public void getDfName() {
+        Assert.assertEquals(DF_NAME, getPoApplicationByte((byte) 0x01).getDfName());
+    }
+
+    @Test
+    public void getDfNameBytes() {
         Assert.assertArrayEquals(ByteArrayUtil.fromHex(DF_NAME),
-                getPoApplicationByte((byte) 0x01).getDfName());
+                getPoApplicationByte((byte) 0x01).getDfNameBytes());
     }
 
     @Test
     public void getApplicationSerialNumber() {
         Assert.assertArrayEquals(ByteArrayUtil.fromHex(SERIAL_NUMBER),
-                getPoApplicationByte((byte) 0x01).getApplicationSerialNumber());
+                getPoApplicationByte((byte) 0x01).getApplicationSerialNumberBytes());
+    }
+
+    @Test
+    public void getApplicationSerialNumberBytes() {
+        Assert.assertArrayEquals(ByteArrayUtil.fromHex(SERIAL_NUMBER),
+                getPoApplicationByte((byte) 0x01).getApplicationSerialNumberBytes());
     }
 
     @Test
     public void getAtr() {
-        Assert.assertArrayEquals(ByteArrayUtil.fromHex(ATR_VALUE),
-                getPoApplicationByte((byte) 0x01).getAtr());
+        Assert.assertEquals(ATR_VALUE, getPoApplicationByte((byte) 0x01).getAtr());
     }
 
     @Test
-    public void isModificationsCounterInBytes() {
+    public void isModificationCounterInBytes() {
         // false for rev 2
-        Assert.assertFalse(getPoApplicationByte((byte) 0x01).isModificationsCounterInBytes());
+        Assert.assertFalse(getPoApplicationByte((byte) 0x01).isModificationCounterInBytes());
         // true for rev 3
-        Assert.assertTrue(getPoApplicationByte((byte) 0x27).isModificationsCounterInBytes());
+        Assert.assertTrue(getPoApplicationByte((byte) 0x27).isModificationCounterInBytes());
     }
 
     @Test
-    public void getModificationsCounter() {
+    public void getModificationCounter() {
         // 6 for rev 2
-        Assert.assertEquals(6, getPoApplicationByte((byte) 0x01).getModificationsCounter());
+        Assert.assertEquals(6, getPoApplicationByte((byte) 0x01).getModificationCounter());
         // 215 bytes for rev 3
-        Assert.assertEquals(215, getPoApplicationByte((byte) 0x27).getModificationsCounter());
+        Assert.assertEquals(215, getPoApplicationByte((byte) 0x27).getModificationCounter());
     }
 
     @Test
@@ -182,11 +192,11 @@ public class CalypsoPoTest {
         CalypsoPo calypsoPo = new CalypsoPo(selectionData, TransmissionMode.CONTACTLESS, null);
 
         Assert.assertEquals(PoRevision.REV1_0, calypsoPo.getRevision());
-        Assert.assertNull(calypsoPo.getDfName());
+        Assert.assertNull(calypsoPo.getDfNameBytes());
         Assert.assertArrayEquals(ByteArrayUtil.fromHex(SERIAL_NUMBER),
-                calypsoPo.getApplicationSerialNumber());
-        Assert.assertFalse(calypsoPo.isModificationsCounterInBytes());
-        Assert.assertEquals(3, calypsoPo.getModificationsCounter());
+                calypsoPo.getApplicationSerialNumberBytes());
+        Assert.assertFalse(calypsoPo.isModificationCounterInBytes());
+        Assert.assertEquals(3, calypsoPo.getModificationCounter());
         Assert.assertEquals(PoClass.LEGACY, calypsoPo.getPoClass());
     }
 
@@ -195,29 +205,27 @@ public class CalypsoPoTest {
         CalypsoPo calypsoPo;
         /* Rev1 PO */
         calypsoPo = getCalypsoPo(ATR_VALUE, "6700");
-        Assert.assertFalse(calypsoPo.isModificationsCounterInBytes());
-        Assert.assertEquals(3, calypsoPo.getModificationsCounter());
-        Assert.assertEquals(0, calypsoPo.getBufferSizeIndicator());
-        Assert.assertEquals(3, calypsoPo.getModificationsCounter());
-        Assert.assertEquals(3, calypsoPo.getBufferSizeValue());
-        Assert.assertEquals(0x08, calypsoPo.getPlatformByte());
-        Assert.assertEquals(0x03, calypsoPo.getApplicationTypeByte());
-        Assert.assertEquals(0x04, calypsoPo.getApplicationSubtypeByte());
-        Assert.assertEquals(0x00, calypsoPo.getSoftwareIssuerByte());
-        Assert.assertEquals(0x02, calypsoPo.getSoftwareVersionByte());
-        Assert.assertEquals(0x00, calypsoPo.getSoftwareRevisionByte());
+        Assert.assertFalse(calypsoPo.isModificationCounterInBytes());
+        Assert.assertEquals(3, calypsoPo.getModificationCounter());
+        Assert.assertEquals(0, calypsoPo.getSessionModifications());
+        Assert.assertEquals(3, calypsoPo.getModificationCounter());
+        Assert.assertEquals(0x08, calypsoPo.getPlatform());
+        Assert.assertEquals(0x03, calypsoPo.getApplicationType());
+        Assert.assertEquals(0x04, calypsoPo.getApplicationSubtype());
+        Assert.assertEquals(0x00, calypsoPo.getSoftwareIssuer());
+        Assert.assertEquals(0x02, calypsoPo.getSoftwareVersion());
+        Assert.assertEquals(0x00, calypsoPo.getSoftwareRevision());
 
         /* Rev 3.1 */
         calypsoPo = getCalypsoPo(ATR_VALUE, FCI_REV31);
-        Assert.assertTrue(calypsoPo.isModificationsCounterInBytes());
-        Assert.assertEquals(10, calypsoPo.getBufferSizeIndicator());
-        Assert.assertEquals(430, calypsoPo.getModificationsCounter());
-        Assert.assertEquals(430, calypsoPo.getBufferSizeValue());
-        Assert.assertEquals(0x3C, calypsoPo.getPlatformByte());
-        Assert.assertEquals(0x23, calypsoPo.getApplicationTypeByte());
-        Assert.assertEquals(0x05, calypsoPo.getApplicationSubtypeByte());
-        Assert.assertEquals(0x14, calypsoPo.getSoftwareIssuerByte());
-        Assert.assertEquals(0x10, calypsoPo.getSoftwareVersionByte());
-        Assert.assertEquals(0x01, calypsoPo.getSoftwareRevisionByte());
+        Assert.assertTrue(calypsoPo.isModificationCounterInBytes());
+        Assert.assertEquals(10, calypsoPo.getSessionModifications());
+        Assert.assertEquals(430, calypsoPo.getModificationCounter());
+        Assert.assertEquals(0x3C, calypsoPo.getPlatform());
+        Assert.assertEquals(0x23, calypsoPo.getApplicationType());
+        Assert.assertEquals(0x05, calypsoPo.getApplicationSubtype());
+        Assert.assertEquals(0x14, calypsoPo.getSoftwareIssuer());
+        Assert.assertEquals(0x10, calypsoPo.getSoftwareVersion());
+        Assert.assertEquals(0x01, calypsoPo.getSoftwareRevision());
     }
 }
