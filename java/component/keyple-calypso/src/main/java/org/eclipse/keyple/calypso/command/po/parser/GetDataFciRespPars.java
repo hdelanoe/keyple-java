@@ -197,7 +197,7 @@ public final class GetDataFciRespPars extends AbstractPoResponseParser {
                 return;
             }
 
-            byte[] startupInfo = tlv.getValue();
+            startupInfo = tlv.getValue();
 
             if (logger.isDebugEnabled()) {
                 logger.debug("Discretionary Data = {}", ByteArrayUtil.toHex(startupInfo));
